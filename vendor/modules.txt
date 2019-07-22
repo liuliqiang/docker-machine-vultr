@@ -1,0 +1,45 @@
+# github.com/Azure/go-ansiterm v0.0.0-20170929234023-d6e3b3328b78
+github.com/Azure/go-ansiterm/winterm
+github.com/Azure/go-ansiterm
+# github.com/JamesClonk/vultr v2.0.1+incompatible
+github.com/JamesClonk/vultr/lib
+# github.com/Sirupsen/logrus v0.0.0-00010101000000-000000000000 => github.com/sirupsen/logrus v1.4.2
+github.com/Sirupsen/logrus
+# github.com/davecgh/go-spew v1.1.1
+github.com/davecgh/go-spew/spew
+# github.com/docker/docker v1.13.1
+github.com/docker/docker/pkg/term
+github.com/docker/docker/pkg/term/windows
+# github.com/docker/machine v0.16.1
+github.com/docker/machine/libmachine/drivers
+github.com/docker/machine/libmachine/log
+github.com/docker/machine/libmachine/mcnflag
+github.com/docker/machine/libmachine/ssh
+github.com/docker/machine/libmachine/state
+github.com/docker/machine/libmachine/drivers/plugin
+github.com/docker/machine/libmachine/mcnutils
+github.com/docker/machine/libmachine/drivers/plugin/localbinary
+github.com/docker/machine/libmachine/drivers/rpc
+github.com/docker/machine/libmachine/version
+github.com/docker/machine/version
+# github.com/konsorten/go-windows-terminal-sequences v1.0.1
+github.com/konsorten/go-windows-terminal-sequences
+# github.com/pmezard/go-difflib v1.0.0
+github.com/pmezard/go-difflib/difflib
+# github.com/stretchr/testify v1.3.0
+github.com/stretchr/testify/assert
+# golang.org/x/crypto v0.0.0-20190701094942-4def268fd1a4
+golang.org/x/crypto/ssh
+golang.org/x/crypto/ssh/terminal
+golang.org/x/crypto/curve25519
+golang.org/x/crypto/ed25519
+golang.org/x/crypto/internal/chacha20
+golang.org/x/crypto/poly1305
+golang.org/x/crypto/ed25519/internal/edwards25519
+golang.org/x/crypto/internal/subtle
+# golang.org/x/sys v0.0.0-20190422165155-953cdadca894
+golang.org/x/sys/unix
+golang.org/x/sys/windows
+golang.org/x/sys/cpu
+# golang.org/x/time v0.0.0-20190308202827-9d24e82272b4
+golang.org/x/time/rate

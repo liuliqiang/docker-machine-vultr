@@ -2,6 +2,7 @@ package lib
 
 import (
 	"bytes"
+	"context"
 	"crypto/tls"
 	"encoding/json"
 	"errors"
@@ -14,12 +15,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/juju/ratelimit"
+	"golang.org/x/time/rate"
 )
 
 const (
 	// Version of this libary
-	Version = "1.13.0"
+	Version = "2.0.1"
 
 	// APIVersion of Vultr
 	APIVersion = "v1"
@@ -55,8 +56,14 @@ type Client struct {
 	MaxAttempts int
 
 	// Throttling struct
-	bucket *ratelimit.Bucket
+	limiter *rate.Limiter
+
+	// Optional function called after every successful request made to the API
+	onRequestCompleted RequestCompletionCallback
 }
+
+// RequestCompletionCallback defines the type of the request callback function
+type RequestCompletionCallback func(*http.Request, *http.Response)
 
 // Options represents optional settings and flags that can be passed to NewClient
 type Options struct {
@@ -85,7 +92,7 @@ func NewClient(apiKey string, options *Options) *Client {
 	client := http.DefaultClient
 	client.Transport = transport
 	endpoint, _ := url.Parse(DefaultEndpoint)
-	rate := 505 * time.Millisecond
+	rateLimit := 505 * time.Millisecond
 	attempts := 1
 
 	if options != nil {
@@ -99,7 +106,7 @@ func NewClient(apiKey string, options *Options) *Client {
 			endpoint, _ = url.Parse(options.Endpoint)
 		}
 		if options.RateLimitation != 0 {
-			rate = options.RateLimitation
+			rateLimit = options.RateLimitation
 		}
 		if options.MaxRetries != 0 {
 			attempts = options.MaxRetries + 1
@@ -112,19 +119,13 @@ func NewClient(apiKey string, options *Options) *Client {
 		Endpoint:    endpoint,
 		APIKey:      apiKey,
 		MaxAttempts: attempts,
-		bucket:      ratelimit.NewBucket(rate, 1),
+		// rate limit is req/s
+		limiter: rate.NewLimiter(rate.Limit(float64(time.Second)/float64(rateLimit)), 1),
 	}
 }
 
 func apiPath(path string) string {
 	return fmt.Sprintf("/%s/%s", APIVersion, path)
-}
-
-func apiKeyPath(path, apiKey string) string {
-	if strings.Contains(path, "?") {
-		return path + "&api_key=" + apiKey
-	}
-	return path + "?api_key=" + apiKey
 }
 
 func (c *Client) get(path string, data interface{}) error {
@@ -143,8 +144,13 @@ func (c *Client) post(path string, values url.Values, data interface{}) error {
 	return c.do(req, data)
 }
 
+// OnRequestCompleted sets the API request completion callback
+func (c *Client) OnRequestCompleted(rc RequestCompletionCallback) {
+	c.onRequestCompleted = rc
+}
+
 func (c *Client) newRequest(method string, path string, body io.Reader) (*http.Request, error) {
-	relPath, err := url.Parse(apiKeyPath(path, c.APIKey))
+	relPath, err := url.Parse(path)
 	if err != nil {
 		return nil, err
 	}
@@ -156,6 +162,7 @@ func (c *Client) newRequest(method string, path string, body io.Reader) (*http.R
 		return nil, err
 	}
 
+	req.Header.Add("API-Key", c.APIKey)
 	req.Header.Add("User-Agent", c.UserAgent)
 	req.Header.Add("Accept", mediaType)
 
@@ -167,7 +174,7 @@ func (c *Client) newRequest(method string, path string, body io.Reader) (*http.R
 
 func (c *Client) do(req *http.Request, data interface{}) error {
 	// Throttle http requests to avoid hitting Vultr's API rate-limit
-	c.bucket.Wait(1)
+	c.limiter.Wait(context.Background()) // ignore error on ratelimiter
 
 	// Request body gets drained on each read so we
 	// need to save it's content for retrying requests
@@ -191,6 +198,10 @@ func (c *Client) do(req *http.Request, data interface{}) error {
 		resp, err := c.client.Do(req)
 		if err != nil {
 			return err
+		}
+
+		if c.onRequestCompleted != nil {
+			c.onRequestCompleted(req, resp)
 		}
 
 		body, err := ioutil.ReadAll(resp.Body)

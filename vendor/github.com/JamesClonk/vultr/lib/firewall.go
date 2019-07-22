@@ -28,6 +28,7 @@ type FirewallRule struct {
 	Protocol   string `json:"protocol"`
 	Port       string `json:"port"`
 	Network    *net.IPNet
+	Notes      string `json:"notes"`
 }
 
 type firewallGroups []FirewallGroup
@@ -83,14 +84,19 @@ func (r *FirewallRule) UnmarshalJSON(data []byte) (err error) {
 	r.Action = fmt.Sprintf("%v", fields["action"])
 	r.Protocol = fmt.Sprintf("%v", fields["protocol"])
 	r.Port = fmt.Sprintf("%v", fields["port"])
+	r.Notes = fmt.Sprintf("%v", fields["notes"])
 	subnet := fmt.Sprintf("%v", fields["subnet"])
+	if subnet == "<nil>" {
+		subnet = ""
+	}
 
-	if subnetSize > 0 && len(subnet) > 0 {
+	if len(subnet) > 0 {
 		_, r.Network, err = net.ParseCIDR(fmt.Sprintf("%s/%d", subnet, subnetSize))
 		if err != nil {
 			return fmt.Errorf("Failed to parse subnet from Vultr API")
 		}
 	} else {
+		// This case is used to create a valid default CIDR when the Vultr API does not return a subnet/subnet size at all, e.g. the response after creating a new rule.
 		_, r.Network, _ = net.ParseCIDR("0.0.0.0/0")
 	}
 
@@ -194,7 +200,7 @@ func (c *Client) GetFirewallRules(groupID string) ([]FirewallRule, error) {
 // protocol must be one of: "icmp", "tcp", "udp", "gre"
 // port can be a port number or colon separated port range (TCP/UDP only)
 func (c *Client) CreateFirewallRule(groupID, protocol, port string,
-	network *net.IPNet) (int, error) {
+	network *net.IPNet, notes string) (int, error) {
 	ip := network.IP.String()
 	maskBits, _ := network.Mask.Size()
 	if ip == "<nil>" {
@@ -224,6 +230,10 @@ func (c *Client) CreateFirewallRule(groupID, protocol, port string,
 
 	if len(port) > 0 {
 		values.Add("port", port)
+	}
+
+	if len(notes) > 0 {
+		values.Add("notes", notes)
 	}
 
 	var result FirewallRule
